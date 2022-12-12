@@ -107,25 +107,26 @@ class DecisionTransformer(nn.Module):
         self.embed_ln = nn.LayerNorm(h_dim)
         self.embed_timestep = torch.nn.Embedding(max_timestep, h_dim)
         self.embed_rtg = torch.nn.Linear(1, h_dim)
-        self.embed_state = nn.Sequential(
-            torch.nn.Conv2d(1, 64,3),
+        '''self.embed_state = nn.Sequential(
+            torch.nn.Conv2d(20, 256,3),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 128,3),
+            torch.nn.Conv2d(256, 128,3),
             torch.nn.ReLU(),
             )
-        self.embed_state_flatten=torch.nn.Linear(15*7*128, h_dim)
+        self.embed_state_flatten=torch.nn.Linear(4224, h_dim)'''
+        self.embed_state= torch.nn.Linear(self.state_dim, h_dim)
         #torch.nn.Conv2d
         # # discrete actions
         #self.embed_action = torch.nn.Embedding(act_dim, h_dim)
         #use_action_tanh = False # False for discrete actions
 
         # continuous actions
-        self.embed_action = torch.nn.Linear(act_dim, h_dim)
+        self.embed_action = torch.nn.Linear(self.act_dim, h_dim)
         use_action_tanh = False # True for continuous actions
 
         ### prediction heads
         self.predict_rtg = torch.nn.Linear(h_dim, 1)
-        self.predict_state = torch.nn.Linear(h_dim, state_dim)
+        #self.predict_state = torch.nn.Linear(h_dim, state_dim)
         self.predict_action = nn.Sequential(
             *([nn.Linear(h_dim, act_dim)] + ([nn.Tanh()] if use_action_tanh else [nn.Softmax(dim = 1)]))
         )
@@ -133,11 +134,12 @@ class DecisionTransformer(nn.Module):
 
     def forward(self, timesteps, states, actions, returns_to_go):
 
-        B, T, _ = states.shape
+        B, T, _,_ = states.shape
         time_embeddings = self.embed_timestep(timesteps)
-
+        #print(self.embed_state(states).view(B,-1).shape)
+        #exit(1)
         # time embeddings are treated similar to positional embeddings
-        state_embeddings = self.embed_state_flatten(self.embed_state(states).view(B,-1)) + time_embeddings
+        state_embeddings = self.embed_state(states.view(B,T,-1)) + time_embeddings
         action_embeddings = self.embed_action(actions) + time_embeddings
         returns_embeddings = self.embed_rtg(returns_to_go) + time_embeddings
 
@@ -163,7 +165,7 @@ class DecisionTransformer(nn.Module):
 
         # get predictions
         return_preds = self.predict_rtg(h[:,2])     # predict next rtg given r, s, a
-        state_preds = self.predict_state(h[:,2])    # predict next state given r, s, a
+        #state_preds = self.predict_state(h[:,2])    # predict next state given r, s, a
         action_preds = self.predict_action(h[:,1])  # predict action given r, s
 
-        return state_preds, action_preds, return_preds
+        return _, action_preds, return_preds

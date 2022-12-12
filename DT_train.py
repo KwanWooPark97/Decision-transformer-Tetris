@@ -33,7 +33,7 @@ def get_default_rb_dict(size):
         "default_dtype": np.float32,
         "env_dict": {
             "obs": {                  #observation
-                "shape": (20,105)},
+                "shape": (20,15,7)},
             "act": {
                 "shape": (20,28)},
             "rtg": {"shape": 20},
@@ -68,14 +68,14 @@ class trainer():
         self.max_eval_ep_len = 1000  # max len of one evaluation episode
         self.num_eval_ep = 10  # num of evaluation episodes per iteration
 
-        self.batch_size = 256  # training batch size
-        self.lr = 1e-5  # learning rate
+        self.batch_size = 512  # training batch size
+        self.lr = 1e-4  # learning rate
         self.wt_decay = 1e-4  # weight decay
         self.warmup_steps = 1000  # warmup steps for lr scheduler
 
         # total updates = max_train_iters x num_updates_per_iter
         self.max_train_iters = 100
-        self.num_updates_per_iter = 200
+        self.num_updates_per_iter = 1000
         self.state_dim = 105
         self.act_dim = 28
         self.context_len = 20  # K in decision transformer
@@ -138,20 +138,26 @@ class trainer():
                 # only consider non padded elements
                 action_preds = action_preds.view(-1, self.act_dim)[traj_mask.view(-1, ) > 0]
                 action_target = action_target.view(-1, self.act_dim)[traj_mask.view(-1, ) > 0]
-                #action_target=torch.argmax(action_target,dim=1)
-
+                action_target_acc=torch.argmax(action_target,dim=1)
+                action_preds_acc=torch.argmax(action_preds,dim=1)
+                #acc=torch.zeros_like(action_preds_acc)
+                acc=torch.where(action_target_acc==action_preds_acc, 1,0)
+                acc_train=torch.sum(acc)/action_preds_acc.shape[0]
                 action_loss = F.cross_entropy(action_preds, action_target)
 
                 self.optimizer.zero_grad()
                 action_loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.25)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.3)
                 self.optimizer.step()
                 self.scheduler.step()
-                print(count,"번째 train loss : ",action_loss)
+                print(count,"번째 train loss : ",action_loss, "학습 정확도 :" ,acc_train)
                 self.log_action_losses.append(action_loss.detach().cpu().item())
                 #print(count)
                 count+=1
-        torch.save(self.model.state_dict(),'save_model')
+
+        torch.save(self.model.state_dict(),'save_model.pt')
+
+
     def test(self):
         env = TetrisApp()
         global_step=0
@@ -219,4 +225,3 @@ class trainer():
 if __name__ == '__main__':
     DTT = trainer()
     DTT.run()
-    DTT.test()
