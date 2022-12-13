@@ -120,6 +120,7 @@ class trainer():
             time_step = 1
             state = pre_processing(env.gameScreen)
             raw_state = np.reshape(state, [rows + 1, cols])
+
             state_deq = deque([np.zeros_like(raw_state) for _ in range(20)], maxlen=20)
             action_deq = deque([np.zeros([28, ]) for _ in range(20)], maxlen=20)
             reward_deq = deque([0 for _ in range(20)], maxlen=20)
@@ -138,9 +139,13 @@ class trainer():
                     actions=torch.Tensor(np.array(action_deq)).to(device).unsqueeze(dim=0),
                     returns_to_go=torch.Tensor(np.array(reward_deq)).to(device).unsqueeze(dim=0).unsqueeze(dim=-1)
                 )
+                action_preds_act=action_preds.view(-1, self.act_dim)
+                print(action_preds_act[-1])
+                action=torch.argmax(action_preds_act[-1])
+                act = action_preds_act[-1].cpu().detach().numpy()
+                #print(act.type)
+                #print(action_preds_act.type)
 
-                action=torch.argmax(action_preds[0,-1])
-                act = action_preds[0, -1].cpu().detach().numpy()
                 action_deq.append(act)
                 time_step_deq.append(time_step)
 

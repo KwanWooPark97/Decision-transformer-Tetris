@@ -20,7 +20,7 @@ def get_default_rb_dict(size):
         "default_dtype": np.float32,
         "env_dict": {
             "obs": {                  #observation
-                "shape": (20,1,15,7)},
+                "shape": (20,15,7)},
             "act": {
                 "shape": (20,28)},
             "rtg": {"shape": 20},
@@ -264,7 +264,7 @@ class DQN():
 
         env = TetrisApp()
 
-        EPISODES = 300
+        EPISODES = 3000
 
         pygame.init()
 
@@ -277,7 +277,7 @@ class DQN():
             env.start_game()
             time_step=1
             state = pre_processing(env.gameScreen)
-            raw_state=tf.reshape(state, [1,rows + 1, cols])
+            raw_state=tf.reshape(state, [rows + 1, cols])
             state = tf.reshape(state, [rows + 1, cols,1])
             state_deq = deque([np.zeros_like(raw_state) for _ in range(20)],maxlen=20)
             action_deq = deque([np.zeros([28,]) for _ in range(20)], maxlen=20)
@@ -285,7 +285,7 @@ class DQN():
             reward_deq = deque([0 for _ in range(20)], maxlen=20)
             time_step_deq = deque([0 for _ in range(20)], maxlen=20)
             rtg=1500
-            while not done and time_step<=1000:
+            while not done and time_step<=50:
                 state_deq.append(raw_state)
                 time.sleep(0.2)
 
@@ -308,7 +308,7 @@ class DQN():
                 replay_buffer.add(obs=state_deq, act=action_deq, rtg=reward_deq, traj_mask=traj_mask_deq,time_step=time_step_deq)
                 reward_deq.append(reward)
                 next_state = pre_processing(env.gameScreen)
-                raw_state=np.reshape(next_state, [1,rows + 1, cols])
+                raw_state=np.reshape(next_state, [rows + 1, cols])
                 next_state = np.reshape(next_state, [rows + 1, cols,1])
 
                 state = next_state

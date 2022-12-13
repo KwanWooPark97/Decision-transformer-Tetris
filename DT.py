@@ -91,7 +91,7 @@ class Block(nn.Module):
 
 class DecisionTransformer(nn.Module):
     def __init__(self, state_dim=105, act_dim=28, n_blocks=3, h_dim=256, context_len=20,
-                 n_heads=5, drop_p=0.1, max_timestep=1500):
+                 n_heads=5, drop_p=0.1, max_timestep=1000):
         super().__init__()
 
         self.state_dim = state_dim
@@ -127,8 +127,9 @@ class DecisionTransformer(nn.Module):
         ### prediction heads
         self.predict_rtg = torch.nn.Linear(h_dim, 1)
         #self.predict_state = torch.nn.Linear(h_dim, state_dim)
-        self.predict_action = nn.Sequential(
-            *([nn.Linear(h_dim, act_dim)] + ([nn.Tanh()] if use_action_tanh else [nn.Softmax(dim = 1)]))
+        self.predict_action = torch.nn.Sequential(
+            torch.nn.Linear(h_dim, act_dim),
+            torch.nn.Softmax(dim=2)
         )
 
 

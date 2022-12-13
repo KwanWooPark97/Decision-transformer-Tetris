@@ -68,21 +68,21 @@ class trainer():
         self.max_eval_ep_len = 1000  # max len of one evaluation episode
         self.num_eval_ep = 10  # num of evaluation episodes per iteration
 
-        self.batch_size = 512  # training batch size
+        self.batch_size = 64  # training batch size
         self.lr = 1e-4  # learning rate
         self.wt_decay = 1e-4  # weight decay
         self.warmup_steps = 1000  # warmup steps for lr scheduler
 
         # total updates = max_train_iters x num_updates_per_iter
-        self.max_train_iters = 100
-        self.num_updates_per_iter = 1000
+        self.max_train_iters = 1000
+        self.num_updates_per_iter = 100
         self.state_dim = 105
         self.act_dim = 28
         self.context_len = 20  # K in decision transformer
         self.n_blocks = 5  # num of transformer blocks
         self.embed_dim = 255  # embedding (hidden) dim of transformer
         self.n_heads = 5  # num of transformer heads
-        self.dropout_p = 0.1  # dropout probability
+        self.dropout_p = 0.4  # dropout probability
         self.model = DecisionTransformer(
             state_dim=self.state_dim,
             act_dim=self.act_dim,
@@ -120,7 +120,8 @@ class trainer():
 
                 timesteps, states, actions, reward, traj_mask = samples["time_step"],samples["obs"],samples["act"],samples["rtg"],samples["traj_mask"]
                 #returns_to_go=discount_cumsum(reward,1.0)
-
+                print(states.shape)
+                exit(1)
                 timesteps = torch.from_numpy(timesteps).to(device).long()  # B x T
                 states = torch.from_numpy(states).to(device)  # B x T x state_dim
                 actions = torch.from_numpy(actions).to(device)  # B x T x act_dim
@@ -143,7 +144,8 @@ class trainer():
                 #acc=torch.zeros_like(action_preds_acc)
                 acc=torch.where(action_target_acc==action_preds_acc, 1,0)
                 acc_train=torch.sum(acc)/action_preds_acc.shape[0]
-                action_loss = F.cross_entropy(action_preds, action_target)
+
+                action_loss = F.cross_entropy(action_preds, action_target_acc)
 
                 self.optimizer.zero_grad()
                 action_loss.backward()
@@ -154,8 +156,9 @@ class trainer():
                 self.log_action_losses.append(action_loss.detach().cpu().item())
                 #print(count)
                 count+=1
+                if count %1000==0:
+                    torch.save(self.model.state_dict(), 'save_model.pt')
 
-        torch.save(self.model.state_dict(),'save_model.pt')
 
 
     def test(self):
