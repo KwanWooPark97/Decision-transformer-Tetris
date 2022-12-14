@@ -493,9 +493,8 @@ class TetrisApp(object):
         self.paused = not self.paused
 
     def start_game(self):
-        if self.gameover:
-            self.init_game()
-            self.gameover = False
+        self.init_game()
+        self.gameover = False
 
     # The step is for model training
     def step(self, action):

@@ -68,8 +68,8 @@ class trainer():
         self.max_eval_ep_len = 1000  # max len of one evaluation episode
         self.num_eval_ep = 10  # num of evaluation episodes per iteration
 
-        self.batch_size = 64  # training batch size
-        self.lr = 1e-4  # learning rate
+        self.batch_size = 512  # training batch size
+        self.lr = 5e-5  # learning rate
         self.wt_decay = 1e-4  # weight decay
         self.warmup_steps = 1000  # warmup steps for lr scheduler
 
@@ -120,8 +120,7 @@ class trainer():
 
                 timesteps, states, actions, reward, traj_mask = samples["time_step"],samples["obs"],samples["act"],samples["rtg"],samples["traj_mask"]
                 #returns_to_go=discount_cumsum(reward,1.0)
-                print(states.shape)
-                exit(1)
+
                 timesteps = torch.from_numpy(timesteps).to(device).long()  # B x T
                 states = torch.from_numpy(states).to(device)  # B x T x state_dim
                 actions = torch.from_numpy(actions).to(device)  # B x T x act_dim
@@ -145,7 +144,7 @@ class trainer():
                 acc=torch.where(action_target_acc==action_preds_acc, 1,0)
                 acc_train=torch.sum(acc)/action_preds_acc.shape[0]
 
-                action_loss = F.cross_entropy(action_preds, action_target_acc)
+                action_loss = F.cross_entropy(action_preds, action_target)
 
                 self.optimizer.zero_grad()
                 action_loss.backward()

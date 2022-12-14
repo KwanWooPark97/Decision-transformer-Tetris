@@ -29,7 +29,7 @@ def get_default_rb_dict(size):
 
 def get_replay_buffer():
 
-    kwargs = get_default_rb_dict(size=100000)
+    kwargs = get_default_rb_dict(size=1500000)
 
     return ReplayBuffer(**kwargs)
 
@@ -264,7 +264,7 @@ class DQN():
 
         env = TetrisApp()
 
-        EPISODES = 3000
+        EPISODES = 30000
 
         pygame.init()
 
@@ -285,7 +285,7 @@ class DQN():
             reward_deq = deque([0 for _ in range(20)], maxlen=20)
             time_step_deq = deque([0 for _ in range(20)], maxlen=20)
             rtg=1500
-            while not done and time_step<=50:
+            while not done and replay_buffer.get_current_episode_len()<=1500000:
                 state_deq.append(raw_state)
                 time.sleep(0.2)
 
@@ -310,7 +310,6 @@ class DQN():
                 next_state = pre_processing(env.gameScreen)
                 raw_state=np.reshape(next_state, [rows + 1, cols])
                 next_state = np.reshape(next_state, [rows + 1, cols,1])
-
                 state = next_state
                 time_step +=1
                 score += reward

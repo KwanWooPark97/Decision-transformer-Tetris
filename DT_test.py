@@ -102,10 +102,11 @@ class trainer():
             lambda steps: min((steps + 1) / self.warmup_steps, 1)
         )
         self.model.load_state_dict(torch.load('save_model.pt'))
-        self.model.eval()
+
 
     def test(self):
         env = TetrisApp()
+        self.model.eval()
         global_step=0
         EPISODES = 10
         scores=[]
@@ -132,7 +133,6 @@ class trainer():
 
                 time.sleep(0.2)
                 global_step += 1
-
                 state_preds, action_preds, return_preds = self.model.forward(
                     timesteps=torch.Tensor(np.array(time_step_deq)).to(device).unsqueeze(dim=0).long(),
                     states=torch.Tensor(np.array(state_deq)).to(device).unsqueeze(dim=0),
@@ -140,13 +140,14 @@ class trainer():
                     returns_to_go=torch.Tensor(np.array(reward_deq)).to(device).unsqueeze(dim=0).unsqueeze(dim=-1)
                 )
                 action_preds_act=action_preds.view(-1, self.act_dim)
-                print(action_preds_act[-1])
+
                 action=torch.argmax(action_preds_act[-1])
                 act = action_preds_act[-1].cpu().detach().numpy()
                 #print(act.type)
                 #print(action_preds_act.type)
 
                 action_deq.append(act)
+
                 time_step_deq.append(time_step)
 
                 reward, _ = env.step(action)
