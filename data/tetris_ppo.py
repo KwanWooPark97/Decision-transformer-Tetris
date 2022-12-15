@@ -29,7 +29,7 @@ def get_default_rb_dict(size):
 
 def get_replay_buffer():
 
-    kwargs = get_default_rb_dict(size=1500000)
+    kwargs = get_default_rb_dict(size=150000)
 
     return ReplayBuffer(**kwargs)
 
@@ -269,6 +269,7 @@ class DQN():
         pygame.init()
 
         key_actions = ["LEFT", "RIGHT", "UP", "DOWN"]
+        train_step=21
 
         for e in range(EPISODES):
 
@@ -285,7 +286,8 @@ class DQN():
             reward_deq = deque([0 for _ in range(20)], maxlen=20)
             time_step_deq = deque([0 for _ in range(20)], maxlen=20)
             rtg=1500
-            while not done and replay_buffer.get_current_episode_len()<=1500000:
+            current=0
+            while not done and replay_buffer.get_current_episode_len() <= 150000 and current <= 20:
                 state_deq.append(raw_state)
                 time.sleep(0.2)
 
@@ -313,6 +315,10 @@ class DQN():
                 state = next_state
                 time_step +=1
                 score += reward
+                current+=1
+
+                if replay_buffer.get_current_episode_len() %10000==0:
+                    replay_buffer.save_transitions("data_buffer")
 
             # 보상 저장 및 학습 진행 관련 변수들 출력
             self.scores.append(score)
@@ -321,7 +327,7 @@ class DQN():
             print("episode:", e, "score: %.2f"  %score, "total_clline:", env.total_clline, "global_step:",
                   self.global_step)
         print(min(self.clline) , max(self.clline),sum(self.clline)/len(self.clline))
-        replay_buffer.save_transitions("data_buffer")
+
 
 if __name__ == '__main__':
     gpus = tf.config.experimental.list_physical_devices('GPU')
