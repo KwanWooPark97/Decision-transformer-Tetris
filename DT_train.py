@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from DT import DecisionTransformer
+from DT import DecisionTransformer #DT 파일에 있는 class를 가져옵니다.
 from cpprb import ReplayBuffer
 import torch.nn.functional as F
 from env import TetrisApp
@@ -42,11 +42,11 @@ def get_default_rb_dict(size):
 
 def get_replay_buffer():
 
-    kwargs = get_default_rb_dict(size=100000)
+    kwargs = get_default_rb_dict(size=150000)
 
     return ReplayBuffer(**kwargs)
 
-def discount_cumsum(x, gamma):
+def discount_cumsum(x, gamma): #return_to_go를 계산해줍니다. 하지만 저는 reward를 사용했습니다.
     disc_cumsum = np.zeros_like(x)
     disc_cumsum[:, -1] = x[:, -1]
     #print(x)
@@ -62,27 +62,24 @@ device_name = 'cuda'
 device = torch.device(device_name)
 print("device set to: ", device)
 
-
 class trainer():
     def __init__(self):
         self.max_eval_ep_len = 1000  # max len of one evaluation episode
         self.num_eval_ep = 10  # num of evaluation episodes per iteration
-
-        self.batch_size = 512  # training batch size
-        self.lr = 5e-5  # learning rate
-        self.wt_decay = 1e-4  # weight decay
-        self.warmup_steps = 1000  # warmup steps for lr scheduler
-
+        self.batch_size = 128  # training batch size
+        self.lr = 1e-5  # learning rate
+        self.wt_decay = 1e-5  # weight decay
+        self.warmup_steps = 100  # warmup steps for lr scheduler
         # total updates = max_train_iters x num_updates_per_iter
-        self.max_train_iters = 1000
-        self.num_updates_per_iter = 100
+        self.max_train_iters = 1500
+        self.num_updates_per_iter = 10
         self.state_dim = 105
         self.act_dim = 28
         self.context_len = 20  # K in decision transformer
-        self.n_blocks = 5  # num of transformer blocks
-        self.embed_dim = 255  # embedding (hidden) dim of transformer
-        self.n_heads = 5  # num of transformer heads
-        self.dropout_p = 0.4  # dropout probability
+        self.n_blocks = 15  # num of transformer blocks 5
+        self.embed_dim = 700  # embedding (hidden) dim of transformer 255
+        self.n_heads = 7  # num of transformer heads 5
+        self.dropout_p = 0.2  # dropout probability
         self.model = DecisionTransformer(
             state_dim=self.state_dim,
             act_dim=self.act_dim,
@@ -102,26 +99,23 @@ class trainer():
             lambda steps: min((steps + 1) / self.warmup_steps, 1)
         )
 
-
     def run(self):
-
         replay_buffer = get_replay_buffer()
-
-
-        replay_buffer.load_transitions('./data/data_buffer.npz')
+        replay_buffer.load_transitions('./data/data_buffer_20.npz')#학습에 사용할 데이터를 가져옵니다.
         count=0
-        for i_train_iter in range(self.max_train_iters):
-
+        for i_train_iter in range(self.max_train_iters+1):
             self.log_action_losses = []
             self.model.train()
-
+            if i_train_iter==500:
+                replay_buffer.clear()
+                replay_buffer.load_transitions('./data/data_buffer_50.npz') #학습에 사용할 데이터를 교체합니다.
+            elif i_train_iter==1000:
+                replay_buffer.clear()
+                replay_buffer.load_transitions('./data/data_buffer_1000.npz') #학습에 사용할 데이터를 교체합니다.
             for i in range(self.num_updates_per_iter):
-                samples = replay_buffer.sample(self.batch_size)
-
+                samples = replay_buffer.sample(self.batch_size) #replay_buffer에서 batch_size 만큼 sample을 가져옵니다.
                 timesteps, states, actions, reward, traj_mask = samples["time_step"],samples["obs"],samples["act"],samples["rtg"],samples["traj_mask"]
-                #returns_to_go=discount_cumsum(reward,1.0)
-
-                timesteps = torch.from_numpy(timesteps).to(device).long()  # B x T
+                timesteps = torch.from_numpy(timesteps).to(device).long()  # B x T numpy 데이터를 tensor 형태로 바꿉니다.
                 states = torch.from_numpy(states).to(device)  # B x T x state_dim
                 actions = torch.from_numpy(actions).to(device)  # B x T x act_dim
                 returns_to_go = torch.from_numpy(reward).to(device).unsqueeze(dim=-1)  # B x T x 1
@@ -136,19 +130,20 @@ class trainer():
                 )
 
                 # only consider non padded elements
-                action_preds = action_preds.view(-1, self.act_dim)[traj_mask.view(-1, ) > 0]
-                action_target = action_target.view(-1, self.act_dim)[traj_mask.view(-1, ) > 0]
+                action_preds = action_preds.view(-1, self.act_dim)[traj_mask.view(-1, ) > 0] #모델의 출력을 mask가 1인 부분만 뽑아옵니다.
+                action_target = action_target.view(-1, self.act_dim)[traj_mask.view(-1, ) > 0] #데이터에서 action을 mask가 1인 부분만 뽑아옵니다.
                 action_target_acc=torch.argmax(action_target,dim=1)
                 action_preds_acc=torch.argmax(action_preds,dim=1)
+
                 #acc=torch.zeros_like(action_preds_acc)
                 acc=torch.where(action_target_acc==action_preds_acc, 1,0)
-                acc_train=torch.sum(acc)/action_preds_acc.shape[0]
+                acc_train=torch.sum(acc)/action_preds_acc.shape[0] #정답과 예측의 정확도를 계산합니다.
 
-                action_loss = F.cross_entropy(action_preds, action_target)
+                action_loss = F.cross_entropy(action_preds, action_target_acc) #예측값과 정답값의 cross_entropy loss를 계산합니다.
 
                 self.optimizer.zero_grad()
                 action_loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.3)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.3) #한번에 크게 변하는 것을 방지해줍니다.
                 self.optimizer.step()
                 self.scheduler.step()
                 print(count,"번째 train loss : ",action_loss, "학습 정확도 :" ,acc_train)
@@ -157,72 +152,6 @@ class trainer():
                 count+=1
                 if count %1000==0:
                     torch.save(self.model.state_dict(), 'save_model.pt')
-
-
-
-    def test(self):
-        env = TetrisApp()
-        global_step=0
-        EPISODES = 10
-        scores=[]
-        episodes=[]
-        clline=[]
-        pygame.init()
-        for e in range(EPISODES):
-            rtg_target = 26
-            done = False
-            score = 0.0
-            env.start_game()
-            time_step = 1
-            state = pre_processing(env.gameScreen)
-            raw_state = state
-            state_deq = deque([np.zeros_like(raw_state) for _ in range(20)], maxlen=20)
-            action_deq = deque([np.zeros([28, ]) for _ in range(20)], maxlen=20)
-            reward_deq = deque([0 for _ in range(20)], maxlen=20)
-            time_step_deq = deque([0 for _ in range(20)], maxlen=20)
-            #reward_deq.append(rtg_target)
-
-            while not done and time_step <= 1000:
-                state_deq.append(raw_state)
-                time.sleep(0.2)
-                global_step += 1
-
-                state_preds, action_preds, return_preds = self.model.forward(
-                    timesteps=torch.Tensor(np.array(time_step_deq)).to(device).unsqueeze(dim=0).long(),
-                    states=torch.Tensor(np.array(state_deq)).to(device).unsqueeze(dim=0),
-                    actions=torch.Tensor(np.array(action_deq)).to(device).unsqueeze(dim=0),
-                    returns_to_go=torch.Tensor(np.array(reward_deq)).to(device).unsqueeze(dim=0).unsqueeze(dim=-1)
-                )
-
-                action=torch.argmax(action_preds[0,-1])
-                act = action_preds[0, -1].cpu().detach().numpy()
-                action_deq.append(act)
-                time_step_deq.append(time_step)
-
-                reward, _ = env.step(action)
-
-                # 게임이 끝났을 경우에 대해 보상 -1
-                if env.gameover:
-                    done = True
-                    reward = -2.0
-                else:
-                    done = False
-                rtg_target -= reward
-                reward_deq.append(rtg_target)
-                next_state = pre_processing(env.gameScreen)
-
-                raw_state = next_state
-                time_step += 1
-                score += reward
-
-            # 보상 저장 및 학습 진행 관련 변수들 출력
-            scores.append(score)
-            episodes.append(e)
-            clline.append(env.total_clline)
-            print("episode:", e, "score: %.2f" % score, "total_clline:", env.total_clline, "global_step:",
-                  global_step)
-        print(min(clline), max(clline), sum(clline) / len(clline))
-
 
 if __name__ == '__main__':
     DTT = trainer()

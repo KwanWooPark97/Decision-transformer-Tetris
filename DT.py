@@ -91,7 +91,7 @@ class Block(nn.Module):
 
 class DecisionTransformer(nn.Module):
     def __init__(self, state_dim=105, act_dim=28, n_blocks=3, h_dim=256, context_len=20,
-                 n_heads=5, drop_p=0.1, max_timestep=1000):
+                 n_heads=5, drop_p=0.1, max_timestep=1100):
         super().__init__()
 
         self.state_dim = state_dim
@@ -149,9 +149,7 @@ class DecisionTransformer(nn.Module):
         h = torch.stack(
             (returns_embeddings, state_embeddings, action_embeddings), dim=1
         ).permute(0, 2, 1, 3).reshape(B, 3 * T, self.h_dim)
-
         h = self.embed_ln(h)
-
         # transformer and prediction
         h = self.transformer(h)
 
