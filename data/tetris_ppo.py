@@ -137,7 +137,7 @@ class Test_tetris():
             reward_deq = deque([0 for _ in range(20)], maxlen=20)
             time_step_deq = deque([0 for _ in range(20)], maxlen=20)
             current=0
-            while not done and replay_buffer.get_current_episode_len() <= 150000 and current <= 20:
+            while not done and replay_buffer.get_current_episode_len() <= 150000:
                 state_deq.append(raw_state)
                 time.sleep(0.2)
                 self.global_step += 1
