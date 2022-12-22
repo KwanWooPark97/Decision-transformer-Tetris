@@ -137,7 +137,7 @@ class Test_tetris():
             reward_deq = deque([0 for _ in range(20)], maxlen=20)
             time_step_deq = deque([0 for _ in range(20)], maxlen=20)
             current=0
-            while not done and replay_buffer.get_current_episode_len() <= 150000:
+            while not done and replay_buffer.get_current_episode_len() <= 150000 and current<=15:
                 state_deq.append(raw_state)
                 time.sleep(0.2)
                 self.global_step += 1
@@ -165,7 +165,9 @@ class Test_tetris():
 
                 if replay_buffer.get_current_episode_len() %10000==0:
                     replay_buffer.save_transitions("data_buffer") #replay buffer를 파일로 저장합니다.
-
+            if replay_buffer.get_current_episode_len() >= 150000:
+                replay_buffer.save_transitions("data_buffer")
+                exit(1)
             # 보상 저장 및 학습 진행 관련 변수들 출력
             self.scores.append(score)
             self.episodes.append(e)
