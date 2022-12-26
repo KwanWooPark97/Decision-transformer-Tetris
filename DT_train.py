@@ -71,8 +71,8 @@ class trainer():
         self.wt_decay = 1e-5  # weight decay
         self.warmup_steps = 100  # warmup steps for lr scheduler
         # total updates = max_train_iters x num_updates_per_iter
-        self.max_train_iters = 1500
-        self.num_updates_per_iter = 10
+        self.max_train_iters = 6
+        self.num_updates_per_iter = 5000
         self.state_dim = 105
         self.act_dim = 28
 
@@ -107,17 +107,29 @@ class trainer():
 
     def run(self):
         replay_buffer = get_replay_buffer()
-        replay_buffer.load_transitions('./data/data_buffer_20.npz')#학습에 사용할 데이터를 가져옵니다.
+        replay_buffer.load_transitions('./data/data_buffer_10.npz')#학습에 사용할 데이터를 가져옵니다.
         count=0
         for i_train_iter in range(self.max_train_iters+1):
             self.log_action_losses = []
             self.model.train()
-            if i_train_iter==500:
+            if i_train_iter == 1:
                 replay_buffer.clear()
-                replay_buffer.load_transitions('./data/data_buffer_50.npz') #학습에 사용할 데이터를 교체합니다.
-            elif i_train_iter==1000:
+                replay_buffer.load_transitions('./data/data_buffer_20.npz')  # 학습에 사용할 데이터를 교체합니다.
+            elif i_train_iter == 2:
                 replay_buffer.clear()
-                replay_buffer.load_transitions('./data/data_buffer_1000.npz') #학습에 사용할 데이터를 교체합니다.
+                replay_buffer.load_transitions('./data/data_buffer_50.npz')  # 학습에 사용할 데이터를 교체합니다.
+            elif i_train_iter == 3:
+                replay_buffer.clear()
+                replay_buffer.load_transitions('./data/data_buffer_100.npz')  # 학습에 사용할 데이터를 교체합니다.
+            elif i_train_iter == 4:
+                replay_buffer.clear()
+                replay_buffer.load_transitions('./data/data_buffer_1000.npz')  # 학습에 사용할 데이터를 교체합니다.
+            elif i_train_iter == 5:
+                replay_buffer.clear()
+                replay_buffer.load_transitions('./data/data_buffer_1000_2.npz')  # 학습에 사용할 데이터를 교체합니다.
+            elif i_train_iter == 6:
+                replay_buffer.clear()
+                replay_buffer.load_transitions('./data/data_buffer.npz')  # 학습에 사용할 데이터를 교체합니다.
             for i in range(self.num_updates_per_iter):
                 samples = replay_buffer.sample(self.batch_size) #replay_buffer에서 batch_size 만큼 sample을 가져옵니다.
                 timesteps, states, actions, reward, traj_mask = samples["time_step"],samples["obs"],samples["act"],samples["rtg"],samples["traj_mask"]
