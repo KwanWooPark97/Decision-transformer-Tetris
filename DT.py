@@ -91,7 +91,7 @@ class Block(nn.Module):
 
 class DecisionTransformer(nn.Module):
     def __init__(self, state_dim=105, act_dim=28, n_blocks=3, h_dim=256, context_len=20,
-                 n_heads=5, drop_p=0.1, max_timestep=1100):
+                 n_heads=5, drop_p=0.1, max_timestep=5000):
         super().__init__()
 
         self.state_dim = state_dim
@@ -136,6 +136,7 @@ class DecisionTransformer(nn.Module):
     def forward(self, timesteps, states, actions, returns_to_go):
 
         B, T, _,_ = states.shape
+
         time_embeddings = self.embed_timestep(timesteps)
         #print(self.embed_state(states).view(B,-1).shape)
         #exit(1)
