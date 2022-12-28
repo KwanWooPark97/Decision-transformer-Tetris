@@ -67,20 +67,26 @@ class trainer():
     def __init__(self):
         self.max_eval_ep_len = 1000  # max len of one evaluation episode
         self.num_eval_ep = 10  # num of evaluation episodes per iteration
-        self.batch_size = 128  # training batch size
+        self.batch_size = 256  # training batch size
         self.lr = 1e-5  # learning rate
         self.wt_decay = 1e-5  # weight decay
         self.warmup_steps = 100  # warmup steps for lr scheduler
         # total updates = max_train_iters x num_updates_per_iter
-        self.max_train_iters = 1500
-        self.num_updates_per_iter = 10
+        self.max_train_iters = 6
+        self.num_updates_per_iter = 3000
         self.state_dim = 105
         self.act_dim = 28
+
+        ################################################################
+        # 모델을 무작정 크게하면 오히려 성능이 좋아짐 GPT의 기본적인 학습을 잊지 말자
+        # PC의 성능 한계로 n_blocks를 크게하면 메모리 부족으로 안돌아감
+        # embed_dim은 n_heads로 나눠 떨어지게끔 설정해야함
+        ################################################################
         self.context_len = 20  # K in decision transformer
-        self.n_blocks = 15  # num of transformer blocks 5
-        self.embed_dim = 700  # embedding (hidden) dim of transformer 255
-        self.n_heads = 7  # num of transformer heads 5
-        self.dropout_p = 0.2  # dropout probability
+        self.n_blocks = 10  # num of transformer blocks 5
+        self.embed_dim = 800  # embedding (hidden) dim of transformer 255
+        self.n_heads = 8  # num of transformer heads 5
+        self.dropout_p = 0.1  # dropout probability
         self.model = DecisionTransformer(
             state_dim=self.state_dim,
             act_dim=self.act_dim,
