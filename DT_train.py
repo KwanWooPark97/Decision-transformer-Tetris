@@ -80,6 +80,7 @@ class trainer():
         # 모델을 무작정 크게하면 오히려 성능이 좋아짐 GPT의 기본적인 학습을 잊지 말자
         # PC의 성능 한계로 n_blocks를 크게하면 메모리 부족으로 안돌아감
         # embed_dim은 n_heads로 나눠 떨어지게끔 설정해야함
+        #아무리 바꿔봐도 성능이 안나옴 코드 자체에 문제가 있는것 같음
         ################################################################
         self.context_len = 20  # K in decision transformer
         self.n_blocks = 10  # num of transformer blocks 5
